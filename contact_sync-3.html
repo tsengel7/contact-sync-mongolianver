@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дугаар хадгалах систем</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mongolian&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3347;
+    --border2: #3d4260;
+    --text: #e8eaf6;
+    --muted: #7b82a8;
+    --accent: #6c8eff;
+    --accent2: #a78bfa;
+    --success: #34d399;
+    --success-bg: #064e3b22;
+    --danger: #f87171;
+    --warn: #fbbf24;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Plus Jakarta Sans', sans-serif;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+    background-image: radial-gradient(ellipse at 20% 0%, #1a1f4422 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, #2a1f4422 0%, transparent 60%);
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header h1 .icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  header p {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    flex-shrink: 0;
+  }
+
+  /* ── SHEET TABS ── */
+  .sheet-tabs-wrapper {
+    display: none;
+    margin-bottom: 1rem;
+  }
+  .sheet-tabs-wrapper.visible { display: block; }
+  .sheet-tabs-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .sheet-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sheet-tab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sheet-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .sheet-tab.active {
+    background: linear-gradient(135deg, #1a2a5e, #1e1a3a);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .sheet-tab .tab-count {
+    background: var(--border2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+  }
+  .sheet-tab.active .tab-count { background: var(--accent); color: #fff; }
+  .sheet-tab.skipped { opacity: 0.4; cursor: default; }
+  .sheet-tab.skipped:hover { border-color: var(--border2); color: var(--muted); }
+
+  /* ── DROP ZONE ── */
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: 8px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    position: relative;
+    overflow: hidden;
+  }
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 30%, #6c8eff08 100%);
+    pointer-events: none;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #1a2040;
+  }
+  .drop-zone .dz-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .drop-zone p { font-size: 14px; color: var(--muted); }
+  .drop-zone p strong { color: var(--accent); }
+  .drop-zone small {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--border2);
+  }
+  .drop-zone.loaded {
+    border-color: var(--success);
+    background: var(--success-bg);
+    cursor: pointer;
+  }
+  .drop-zone.loaded p { color: var(--success); }
+
+  input[type="file"] { display: none; }
+
+  .error-msg {
+    background: #3f1111;
+    border: 1px solid #7f2222;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--danger);
+    font-family: var(--mono);
+    margin-top: 10px;
+    display: none;
+    white-space: pre-line;
+    line-height: 1.7;
+  }
+
+  /* ── MANUAL ENTRY ── */
+  .or-divider {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin: 16px 0;
+    position: relative;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; position: absolute;
+    top: 50%; width: 44%; height: 1px;
+    background: var(--border);
+  }
+  .or-divider::before { left: 0; }
+  .or-divider::after { right: 0; }
+
+  .manual-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--sans);
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); background: #1e2240; }
+  input[type="text"]::placeholder { color: var(--border2); }
+
+  .btn-add {
+    padding: 9px 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .btn-add:hover { opacity: 0.85; }
+
+  /* ── CONTACT TABLE ── */
+  .table-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .count-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .btn-clear-all {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: var(--mono);
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear-all:hover { border-color: var(--danger); color: var(--danger); }
+
+  .contact-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .contact-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 10px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .contact-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .contact-table tr:last-child td { border-bottom: none; }
+  .contact-table td.mono { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .contact-table td.dept-cell {
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: var(--mono);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* department header row */
+  .dept-row td {
+    background: var(--surface2);
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border2);
+    letter-spacing: 0.02em;
+  }
+
+  .btn-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--border2); font-size: 16px; line-height: 1;
+    padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+  }
+  .btn-del:hover { background: #3f111122; color: var(--danger); }
+
+  /* ── DOWNLOAD ── */
+  .btn-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #2a3a7a, #3a2a6a);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: var(--sans);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .btn-download:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-color: transparent;
+  }
+  .btn-download:disabled { opacity: 0.25; cursor: default; }
+
+  .success-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--success-bg);
+    border: 1px solid #065f4666;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--success);
+    margin-top: 10px;
+    font-family: var(--mono);
+  }
+
+  /* ── SCROLLABLE TABLE WRAPPER ── */
+  .table-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    border-radius: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+
+  @media (max-width: 580px) {
+    .manual-grid { grid-template-columns: 1fr 1fr; }
+    .manual-grid .btn-add { grid-column: 1 / -1; }
+    .contact-table td.dept-cell { display: none; }
+    .contact-table th:nth-child(3) { display: none; }
+  }
+  @media (max-width: 380px) {
+    .manual-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>
+      <span class="icon">📇</span>
+      Дугаар хадгалах систем
+    </h1>
+    <p>xlsx оруулах → .vcf татах → утсандаа бүх харилцагчийг нэмэх</p>
+  </header>
+
+  <!-- FILE UPLOAD CARD -->
+  <div class="card">
+    <div class="section-label"><span class="dot"></span>Excel файл оруулах</div>
+
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <span class="dz-icon">📂</span>
+      <p>Файлаа оруулах эсвэл <strong>хайх</strong></p>
+      <small>.xlsx / .xls — Олон sheet-тэй файл дэмжинэ</small>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+    <div class="error-msg" id="error-msg"></div>
+
+    <!-- SHEET TABS -->
+    <div class="sheet-tabs-wrapper" id="sheet-tabs-wrapper">
+      <div class="sheet-tabs-label">Sheet-үүд</div>
+      <div class="sheet-tabs" id="sheet-tabs"></div>
+    </div>
+
+    <div class="or-divider">эсвэл гараар нэмэх</div>
+
+    <div class="manual-grid">
+      <input type="text" id="m-name"  placeholder="Овог, нэр">
+      <input type="text" id="m-dept"  placeholder="Хэлтэс (заавал биш)">
+      <input type="text" id="m-pos"   placeholder="Албан тушаал">
+      <input type="text" id="m-phone" placeholder="Утасны дугаар">
+      <button class="btn-add" onclick="addManual()" style="grid-column:1/-1">+ Нэмэх</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW CARD -->
+  <div class="card" id="preview-card" style="display:none;">
+    <div class="table-controls">
+      <div class="section-label" style="margin:0"><span class="dot"></span>Харилцагчид <span class="count-pill" id="count-badge">0</span></div>
+      <button class="btn-clear-all" onclick="clearAll()">Бүгдийг устгах</button>
+    </div>
+    <div class="table-scroll">
+      <table class="contact-table">
+        <thead><tr><th>Овог, нэр</th><th>Хэлтэс</th><th>Албан тушаал</th><th>Утас</th><th></th></tr></thead>
+        <tbody id="contact-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DOWNLOAD CARD -->
+  <div class="card">
+    <div class="section-label"><span class="dot"></span>Татах</div>
+    <button class="btn-download" id="dl-btn" onclick="downloadVCF()" disabled>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      contacts.vcf татах
+    </button>
+    <div class="success-bar" id="success-bar">
+      ✓ &nbsp;contacts.vcf амжилттай татагдлаа
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let contacts = [];        // [{name, dept, position, phone}]
+let allSheets = [];       // [{name, contacts:[]}]  parsed from file
+let activeSheetIdxs = new Set(); // which sheet indexes are toggled on
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function h(s) {
+  return (s || '').toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function esc(s) {
+  return (s || '').toString()
+    .replace(/\\/g,'\\\\').replace(/;/g,'\\;')
+    .replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = '⚠  ' + msg;
+  el.style.display = 'block';
+}
+function clearError() { document.getElementById('error-msg').style.display = 'none'; }
+
+// Normalize a header string for fuzzy matching
+function norm(s) {
+  return (s || '').toString().toLowerCase().replace(/[\s_\-\./\(\)№,]/g, '');
+}
+
+// ─────────────────────────────────────────────
+// COLUMN DETECTION
+// ─────────────────────────────────────────────
+function guessCol(headers, hints) {
+  const nh = headers.map(norm);
+  for (const hint of hints) {
+    const i = nh.findIndex(h => h === hint);
+    if (i >= 0) return i;
+  }
+  for (const hint of hints) {
+    const i = nh.findIndex(h => h.includes(hint));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+const NAME_HINTS  = ['овогнэр','нэр','овог','name','fullname','employeename'];
+const POS_HINTS   = ['албантушаал','тушаал','position','title','jobtitle','role'];
+const PHONE_HINTS = ['утаснындугаар','утас','дугаар','phone','mobile','tel','telephone','number','cell'];
+
+// ─────────────────────────────────────────────
+// SHEET STRUCTURE DETECTION
+// ─────────────────────────────────────────────
+// Returns true if a row looks like a department/section header:
+//   - first non-null cell is a string
+//   - all other cells are null/undefined/empty
+//   - that string doesn't look like a number or a name with a dot (Б.Нэр)
+function isDeptRow(row) {
+  const vals = row.filter(v => v !== null && v !== undefined && v !== '');
+  if (vals.length !== 1) return false;
+  const v = vals[0].toString().trim();
+  // Skip if looks like a numbered name (Б.Мөнх), a pure number, or short
+  if (/^\d+$/.test(v)) return false;
+  if (/^[А-ЯӨҮа-яөүA-Z][а-яөүa-z]?\.\S/.test(v)) return false; // Б.Нэр pattern
+  if (v.length < 4) return false;
+  return true;
+}
+
+// Detect if a row is a header row (contains column names)
+function isHeaderRow(row, colCount) {
+  const strs = row.filter(v => v !== null && v !== undefined && v !== '' && typeof v === 'string');
+  if (strs.length < 2) return false;
+  const joined = norm(row.join(''));
+  return (joined.includes('овог') || joined.includes('нэр') || joined.includes('утас') ||
+          joined.includes('тушаал') || joined.includes('name') || joined.includes('phone'));
+}
+
+// ─────────────────────────────────────────────
+// PARSE A SINGLE SHEET INTO CONTACTS
+// ─────────────────────────────────────────────
+function parseSheet(sheetName, rawRows) {
+  if (!rawRows || rawRows.length === 0) return { contacts: [], skipped: true, reason: 'Хоосон sheet' };
+
+  // Convert to arrays of values
+  const rows = rawRows.map(r => {
+    if (Array.isArray(r)) return r;
+    return Object.values(r);
+  });
+
+  // Find header row
+  let headerRowIdx = -1;
+  let nameCol = -1, posCol = -1, phoneCol = -1;
+
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const row = rows[i].map(v => v === null || v === undefined ? '' : v.toString().trim());
+    if (isHeaderRow(row)) {
+      nameCol  = guessCol(row, NAME_HINTS);
+      posCol   = guessCol(row, POS_HINTS);
+      phoneCol = guessCol(row, PHONE_HINTS);
+      if (phoneCol >= 0 || nameCol >= 0) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (headerRowIdx === -1 || (nameCol < 0 && phoneCol < 0)) {
+    return { contacts: [], skipped: true, reason: 'Овог нэр / Утасны дугаар багана олдсонгүй' };
+  }
+
+  // Parse data rows after header, tracking department headers
+  const result = [];
+  let currentDept = '';
+  let currentPos  = '';   // carries forward within the same department
+
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
+    const row = rows[i].map(v => (v === null || v === undefined) ? '' : v.toString().trim());
+
+    // Check for department header row — reset inherited position on new dept
+    if (isDeptRow(row)) {
+      currentDept = row.find(v => v !== '').trim();
+      currentPos  = '';
+      continue;
+    }
+
+    const name  = nameCol  >= 0 ? row[nameCol]  : '';
+    const pos   = posCol   >= 0 ? row[posCol]   : '';
+    const phone = phoneCol >= 0 ? row[phoneCol] : '';
+
+    // Skip empty rows, pure number rows, header-looking rows
+    if (!name && !phone) continue;
+    if (!name && /^\d{1,3}$/.test(phone)) continue; // lone sequential numbers
+
+    // Inherit last known position if this row's cell is blank
+    if (pos) currentPos = pos;
+    const resolvedPos = currentPos;
+
+    // Build combined position: "Хэлтэс · Тушаал"
+    const deptPart = currentDept || '';
+    const posPart  = resolvedPos || '';
+    let fullTitle = '';
+    if (deptPart && posPart) {
+      fullTitle = deptPart + ' · ' + posPart;
+    } else {
+      fullTitle = deptPart || posPart;
+    }
+
+    result.push({
+      name:      name,
+      dept:      deptPart,
+      position:  resolvedPos,
+      fullTitle: fullTitle,
+      phone:     phone.replace(/[\s\-\(\)]/g, ''),
+    });
+  }
+
+  return { contacts: result, skipped: result.length === 0,
+           reason: result.length === 0 ? 'Мэдээлэл байхгүй' : '' };
+}
+
+// ─────────────────────────────────────────────
+// REBUILD MASTER CONTACT LIST FROM ACTIVE SHEETS + MANUAL
+// ─────────────────────────────────────────────
+let manualContacts = [];
+
+function rebuildContacts() {
+  contacts = [...manualContacts];
+  for (const idx of activeSheetIdxs) {
+    contacts = contacts.concat(allSheets[idx].contacts);
+  }
+  updateUI();
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function updateUI() {
+  const n = contacts.length;
+  document.getElementById('count-badge').textContent = n;
+  document.getElementById('dl-btn').disabled = n === 0;
+  document.getElementById('preview-card').style.display = n > 0 ? 'block' : 'none';
+
+  const tbody = document.getElementById('contact-tbody');
+  tbody.innerHTML = '';
+
+  // Group by dept for display
+  let lastDept = null;
+  contacts.forEach((c, i) => {
+    if (c.dept && c.dept !== lastDept) {
+      lastDept = c.dept;
+      const deptTr = document.createElement('tr');
+      deptTr.className = 'dept-row';
+      deptTr.innerHTML = `<td colspan="5">📁 ${h(c.dept)}</td>`;
+      tbody.appendChild(deptTr);
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${h(c.name)}</td>
+      <td class="mono dept-cell" title="${h(c.dept)}">${h(c.dept)}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${h(c.position)}</td>
+      <td class="mono">${h(c.phone)}</td>
+      <td><button class="btn-del" onclick="removeContact(${i})" title="Устгах">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function removeContact(i) {
+  // If it came from manual, remove from manualContacts
+  if (i < manualContacts.length) {
+    manualContacts.splice(i, 1);
+  } else {
+    // Mark removal by splicing contacts directly and flagging
+    contacts.splice(i, 1);
+    // Rebuild manually won't work perfectly for mid-sheet removal; just patch
+    updateUI();
+    return;
+  }
+  rebuildContacts();
+}
+
+function clearAll() {
+  manualContacts = [];
+  allSheets = [];
+  activeSheetIdxs.clear();
+  contacts = [];
+  document.getElementById('sheet-tabs-wrapper').classList.remove('visible');
+  document.getElementById('sheet-tabs').innerHTML = '';
+  // Reset drop zone
+  const dz = document.getElementById('drop-zone');
+  dz.className = 'drop-zone';
+  dz.innerHTML = `<span class="dz-icon">📂</span>
+    <p>Файлаа оруулах эсвэл <strong>хайх</strong></p>
+    <small>.xlsx / .xls — Олон sheet-тэй файл дэмжинэ</small>`;
+  updateUI();
+}
+
+// ─────────────────────────────────────────────
+// RENDER SHEET TABS
+// ─────────────────────────────────────────────
+function renderSheetTabs() {
+  const wrapper = document.getElementById('sheet-tabs-wrapper');
+  const tabsEl  = document.getElementById('sheet-tabs');
+  tabsEl.innerHTML = '';
+
+  if (allSheets.length === 0) { wrapper.classList.remove('visible'); return; }
+  wrapper.classList.add('visible');
+
+  allSheets.forEach((sheet, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'sheet-tab' +
+      (sheet.skipped ? ' skipped' : (activeSheetIdxs.has(idx) ? ' active' : ''));
+
+    const countEl = sheet.skipped
+      ? `<span class="tab-count" title="${sheet.reason}">–</span>`
+      : `<span class="tab-count">${sheet.contacts.length}</span>`;
+
+    btn.innerHTML = `${h(sheet.name)} ${countEl}`;
+    btn.title = sheet.skipped ? sheet.reason : `${sheet.contacts.length} харилцагч`;
+
+    if (!sheet.skipped) {
+      btn.onclick = () => {
+        if (activeSheetIdxs.has(idx)) {
+          activeSheetIdxs.delete(idx);
+          btn.classList.remove('active');
+        } else {
+          activeSheetIdxs.add(idx);
+          btn.classList.add('active');
+        }
+        rebuildContacts();
+        renderSheetTabs();
+      };
+    }
+    tabsEl.appendChild(btn);
+  });
+}
+
+// ─────────────────────────────────────────────
+// FILE PARSING ENTRY POINT
+// ─────────────────────────────────────────────
+function processWorkbook(wb) {
+  clearError();
+  allSheets = [];
+  activeSheetIdxs.clear();
+
+  wb.SheetNames.forEach((sheetName, idx) => {
+    const ws = wb.Sheets[sheetName];
+    // Get raw array-of-arrays (header:1 means first row is NOT used as key)
+    const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+    const result  = parseSheet(sheetName, rawRows);
+    allSheets.push({ name: sheetName, contacts: result.contacts,
+                     skipped: result.skipped, reason: result.reason || '' });
+
+    // Auto-select sheets with data
+    if (!result.skipped && result.contacts.length > 0) {
+      activeSheetIdxs.add(idx);
+    }
+  });
+
+  renderSheetTabs();
+  rebuildContacts();
+
+  const totalLoaded = [...activeSheetIdxs].reduce((s, i) => s + allSheets[i].contacts.length, 0);
+  const dz = document.getElementById('drop-zone');
+  dz.className = 'drop-zone loaded';
+  dz.innerHTML = `<span class="dz-icon">✅</span>
+    <p><strong>${totalLoaded} харилцагч</strong> ${allSheets.length} sheet-ээс ачааллаа</p>
+    <small>Дарж өөр файл оруулах</small>`;
+
+  if (totalLoaded === 0) {
+    showError('Жагсаалтаас харилцагч олдсонгүй.\nSheet tab дарж идэвхжүүлнэ үү.');
+  }
+}
+
+// ─────────────────────────────────────────────
+// FILE INPUT HANDLER
+// ─────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  clearError();
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  if (ext === 'csv') {
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'string' });
+        processWorkbook(wb);
+      } catch { showError('CSV файл уншиж чадсангүй.'); }
+    };
+    reader.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        processWorkbook(wb);
+      } catch { showError('Excel файл уншиж чадсангүй. .xlsx/.xls форматтай эсэхийг шалгана уу.'); }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    showError('Дэмжигдэхгүй файлын төрөл. .xlsx, .xls, .csv файл ашиглана уу.');
+  }
+});
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const dt = new DataTransfer(); dt.items.add(file);
+  document.getElementById('file-input').files = dt.files;
+  document.getElementById('file-input').dispatchEvent(new Event('change'));
+});
+
+// ─────────────────────────────────────────────
+// MANUAL ENTRY
+// ─────────────────────────────────────────────
+function addManual() {
+  const name  = document.getElementById('m-name').value.trim();
+  const dept  = document.getElementById('m-dept').value.trim();
+  const pos   = document.getElementById('m-pos').value.trim();
+  const phone = document.getElementById('m-phone').value.trim();
+  if (!name && !phone) return;
+
+  let fullTitle = '';
+  if (dept && pos) fullTitle = dept + ' · ' + pos;
+  else fullTitle = dept || pos;
+
+  manualContacts.push({ name, dept, position: pos, fullTitle, phone });
+  ['m-name','m-dept','m-pos','m-phone'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-name').focus();
+  rebuildContacts();
+}
+
+document.getElementById('m-name').addEventListener('keydown',  e => { if (e.key==='Enter') document.getElementById('m-dept').focus(); });
+document.getElementById('m-dept').addEventListener('keydown',  e => { if (e.key==='Enter') document.getElementById('m-pos').focus(); });
+document.getElementById('m-pos').addEventListener('keydown',   e => { if (e.key==='Enter') document.getElementById('m-phone').focus(); });
+document.getElementById('m-phone').addEventListener('keydown', e => { if (e.key==='Enter') addManual(); });
+
+// ─────────────────────────────────────────────
+// VCF DOWNLOAD
+// ─────────────────────────────────────────────
+function downloadVCF() {
+  let vcf = '';
+  contacts.forEach(c => {
+    const parts = (c.name || '').trim().split(/\s+/).filter(Boolean);
+    // Mongolian names: "Б.Мөнхсайхан" → last=Мөнхсайхан, first=Б
+    let last = '', first = '';
+    if (parts.length === 1 && parts[0].includes('.')) {
+      const dotIdx = parts[0].indexOf('.');
+      first = parts[0].slice(0, dotIdx);   // initial (Б)
+      last  = parts[0].slice(dotIdx + 1);  // surname (Мөнхсайхан)
+    } else if (parts.length > 1) {
+      last  = parts[parts.length - 1];
+      first = parts.slice(0, -1).join(' ');
+    } else {
+      first = parts[0] || '';
+    }
+    const full = (c.name || '').trim() || c.phone || 'Unknown';
+
+    vcf += 'BEGIN:VCARD\r\n';
+    vcf += 'VERSION:3.0\r\n';
+    vcf += 'FN:'  + esc(full) + '\r\n';
+    vcf += 'N:'   + esc(last) + ';' + esc(first) + ';;;\r\n';
+    if (c.phone)      vcf += 'TEL;TYPE=WORK,VOICE:' + c.phone.replace(/[\s\-\(\)]/g,'') + '\r\n';
+    if (c.fullTitle)  vcf += 'TITLE:' + esc(c.fullTitle) + '\r\n';
+    if (c.dept)       vcf += 'ORG:;' + esc(c.dept) + '\r\n';
+    vcf += 'END:VCARD\r\n';
+  });
+
+  const blob = new Blob(['\uFEFF' + vcf], { type: 'text/vcard;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'contacts.vcf';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  const bar = document.getElementById('success-bar');
+  bar.style.display = 'flex';
+  setTimeout(() => bar.style.display = 'none', 5000);
+}
+</script>
+</body>
+</html>
